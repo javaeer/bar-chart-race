@@ -8,8 +8,8 @@
  * 用法：node scripts/build-standalone.js [输出路径]
  */
 
-import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
+import { dirname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
@@ -21,6 +21,9 @@ const ORDER = [
   "src/core/format.js",
   "src/core/csv.js",
   "src/core/color.js",
+  "src/core/icons.js",
+  "src/core/templates.js",
+
   "src/core/zip.js",
   "src/core/keyframes.js",
   "src/render/renderer.js",
@@ -28,6 +31,64 @@ const ORDER = [
   "src/exporter.js",
   "src/main.js",
 ];
+
+/**
+ * 完整性校验：扫描 src 下所有相对 import，确认每个被引用的文件都在 ORDER 里。
+ * 打包会剥掉 import 语句，漏一个文件就是运行时 ReferenceError，
+ * 而且往往要等到第一次绘制才爆，很难排查 —— 宁可在这里挡下来。
+ */
+async function assertNoMissingModules() {
+  const missing = [];
+  for (const rel of ORDER) {
+    const src = await read(rel);
+    for (const m of src.matchAll(/from\s+["'](\.[^"']+)["']/g)) {
+      const dep = normalize(join(dirname(rel), m[1]));
+      if (!ORDER.includes(dep)) missing.push(`${rel} → ${m[1]} (解析为 ${dep})`);
+    }
+  }
+  // 反向检查：src 里有但 ORDER 没列的文件（新加的模块忘了登记）
+  async function walk(dir) {
+    const out = [];
+    for (const e of await readdir(resolve(ROOT, dir), { withFileTypes: true })) {
+      const p = `${dir}/${e.name}`;
+      if (e.isDirectory()) out.push(...await walk(p));
+      else if (e.name.endsWith(".js")) out.push(normalize(p));
+    }
+    return out;
+  }
+  const all = await walk("src");
+  const unlisted = all.filter((f) => !ORDER.includes(f));
+  const problems = [];
+  if (missing.length) problems.push(`缺失的依赖:\n  ${missing.join("\n  ")}`);
+  if (unlisted.length) problems.push(`src 下未登记进 ORDER 的模块:\n  ${unlisted.join("\n  ")}`);
+  if (problems.length) {
+    throw new Error("打包清单不完整 ——\n" + problems.join("\n"));
+  }
+  await assertNoDuplicateDeclarations();
+}
+
+/**
+ * 顶层重名检测。
+ * 各模块在自己的 ES module 作用域里重名没事，但打包后拼进同一个 IIFE，
+ * `const` 重复声明是 SyntaxError —— 整个 bundle 一行都不会执行，
+ * 页面表现为"静态 UI 在、动态全空、连错误捕获都没注册"。
+ * 所以这里提前把所有顶层标识符收集起来查重。
+ */
+async function assertNoDuplicateDeclarations() {
+  const seen = new Map(); // name → 文件
+  const dup = [];
+  for (const rel of ORDER) {
+    const src = stripExports(stripImports(await read(rel)));
+    for (const m of src.matchAll(/^(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)/gm)) {
+      const name = m[1];
+      if (seen.has(name)) dup.push(`${name}: ${seen.get(name)} 与 ${rel} 重名`);
+      else seen.set(name, rel);
+    }
+  }
+  if (dup.length) {
+    throw new Error("顶层标识符重名（打包后会变成重复声明）——\n  " + dup.join("\n  "));
+  }
+}
 
 /** 去掉行首 import（含跨行写法），并保证不吃掉 import.meta 这类表达式 */
 function stripImports(src) {
@@ -102,6 +163,7 @@ const CSV_FILES = ["category-brands.csv", "cities.csv"];
 async function main() {
   console.log("\n  单文件打包\n");
 
+  await assertNoMissingModules();
   let bundle = await injectData(await buildBundle());
   bundle = escapeForScript(bundle);
 

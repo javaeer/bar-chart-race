@@ -27,6 +27,12 @@
         上传数据
         <input type="file" id="file" accept=".csv,.txt,.tsv" hidden>
       </label>
+      <select id="templateSel" class="select" title="下载 CSV 模板，照着格式填数据">
+        <option value="">📄 模板下载</option>
+        <option value="long">长表模板 · 城市人口</option>
+        <option value="wide">宽表模板 · 省份年度数据</option>
+        <option value="icon">带图标模板 · icon 列</option>
+      </select>
       <button id="themeToggle" class="btn btn-ghost" title="切换明暗主题">🌗</button>
       <button id="panelToggle" class="btn btn-ghost only-mobile" title="参数面板">⚙</button>
     </div>
@@ -93,6 +99,8 @@
           <label class="field">
             <span>画布底色</span>
             <select id="canvasTheme" class="select">
+              <option value="tech">科技深蓝（默认）</option>
+              <option value="cyber">赛博霓虹</option>
               <option value="dark">深色（视频推荐）</option>
               <option value="light">浅色</option>
               <option value="gradient">深色渐变</option>
@@ -133,6 +141,10 @@
             <span>条形圆角 <b id="radiusVal">0.28</b></span>
             <input type="range" id="barRadius" min="0" max="0.5" step="0.02" value="0.28">
           </label>
+          <label class="field range">
+            <span>立体感（伪 3D 厚度）<b id="depthVal">0.45</b></span>
+            <input type="range" id="depth3D" min="0" max="1" step="0.05" value="0.45">
+          </label>
           <div class="checks">
             <label class="check"><input type="checkbox" id="showValue" checked><span>显示数值</span></label>
             <label class="check"><input type="checkbox" id="showAxis" checked><span>显示坐标轴</span></label>
@@ -140,6 +152,27 @@
             <label class="check"><input type="checkbox" id="showTicker" checked><span>显示日期角标</span></label>
             <label class="check"><input type="checkbox" id="fadeEdge" checked><span>边缘淡出</span></label>
           </div>
+        </section>
+
+        <section class="group">
+          <h3>柱头徽标</h3>
+          <label class="field">
+            <span>显示徽标</span>
+            <select id="iconPosition" class="select">
+              <option value="front">骑在柱头（跟随柱顶）</option>
+              <option value="inside">柱头内侧</option>
+              <option value="start">条形起点外侧</option>
+              <option value="none">不显示</option>
+            </select>
+          </label>
+          <label class="field range">
+            <span>徽标大小 <b id="iconSizeVal">0.90</b></span>
+            <input type="range" id="iconSize" min="0.5" max="1.6" step="0.05" value="0.9">
+          </label>
+          <p class="hint">
+            徽标来源优先级：CSV 里的 <code>icon</code>/<code>image</code> 列 → 按分类/国家自动匹配
+            → 名称关键词 → 首字圆牌。系统缺少 emoji 字体时自动降级为圆牌，不会出现方块。
+          </p>
         </section>
 
         <section class="group">

@@ -14,7 +14,7 @@ const ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 // 同时接受 `node scripts/serve.js 8080` 与 `node scripts/serve.js --port=8080`
 const portArg = process.argv.slice(2).find((a) => !a.startsWith("--"));
 const portFlag = (process.argv.find((a) => a.startsWith("--port=")) || "").split("=")[1];
-const PORT = Number(portArg || portFlag || process.env.PORT || 5174);
+const PORT = Number(portArg || portFlag || process.env.PORT || 5173);
 
 const MIME = {
   ".html": "text/html; charset=utf-8",

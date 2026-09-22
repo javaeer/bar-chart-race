@@ -7,6 +7,34 @@ Flourish「Bar Chart Race」的**零依赖开源复刻**：算法源自 Observab
 纯 Canvas 2D 渲染，无任何运行时依赖，浏览器直接跑；专为**短视频制作**增加了
 视频录制、PNG 帧序列导出、9:16 竖版等能力。
 
+### 视觉
+
+默认走**科技风**：深空渐变底 + 点阵底纹 + 高饱和纯色 + 柱体发光。
+
+主题（`src/main.js` 的 `CANVAS_THEMES`）：`tech` 科技深蓝（默认）、`cyber` 赛博霓虹、
+`dark`、`light`、`gradient`、`paper`。科技主题额外带三个字段：
+
+| 字段 | 作用 |
+|---|---|
+| `glow` | 柱体发光强度，用 `shadowBlur` 实现，只作用于柱体不糊高光 |
+| `dot` | 点阵底纹颜色（用 pattern 缓存，不是每帧几千次 `fillRect`） |
+| `accent` | 强调色：绘图区顶部基线 + 标题竖条 |
+| `mono` | 数字改用等宽字体，年份跳动时不会带着画面左右抖 |
+
+色板（`src/core/color.js`）：`tech` 冷调霓虹、`neon` 赛博高饱和、`pure` 12 相纯色
+（S=92% L=58%，色相最"正"），另有 `tableau10` / `observable10` / `set2` / `vivid` / `blues` / `warm`。
+
+日期角标叠印在**绘图区内部右下**、画在柱子下层 —— Flourish 的做法。
+柱子会自然遮住它，短柱行的空白处露出大数字，既醒目又不与数值列抢地盘。
+
+另外还有两项进阶效果：
+
+- **伪 3D 柱体** —— 厚度挤出 + 竖向渐变 + 顶部高光 + 底部暗边四层叠加，
+  `depth3D` 从 0（纯平）到 1（厚重）连续可调，厚度从行高内扣除，永不压行；
+- **柱头徽标** —— 圆形徽标骑在柱头顶端随柱移动，图标来源依次为：
+  CSV 的 `icon`/`image` 列（emoji 或图片 URL）→ 分类/国家映射 → 名称关键词 → 首字圆牌。
+  系统缺 emoji 字体时自动降级成首字圆牌，不会出现"豆腐块"。
+
 ![样片](preview/brands.mp4)
 
 ---
@@ -14,7 +42,7 @@ Flourish「Bar Chart Race」的**零依赖开源复刻**：算法源自 Observab
 ## 快速开始
 
 ```bash
-npm start            # 启动本地服务器 → http://localhost:5174
+npm start            # 启动本地服务器 → http://localhost:5173
 npm test             # 核心引擎 41 项正确性测试
 npm run verify       # 无头浏览器端到端渲染验证 + 自动合成样片
 npm run postprocess -- 录制.webm -o 成片.mp4   # 转 MP4 / GIF
@@ -121,8 +149,20 @@ f(frameIndex, u) → { date, xMax, bars[] }
 
 - **列名自动识别**：`date/时间/年份`、`name/名称/省份`、`value/数值/GDP`、`category/分类/国家`
 - **日期格式**：`2023` / `2023-01` / `2023-01-01` / `2023Q1` / `2023年3月` 均可
-- **图片标记**：加一列 `image`（URL），条形起点会绘制图标/国旗
+- **柱头徽标**：加一列 `icon`（emoji 或图片 URL）；不加列则按分类/国家自动匹配
+  （中文分类如"饮料/科技/汽车"、中文国名"日本/美国"都能映射）
 - 缺失值记 0；同一 (日期，名字) 重复时取较大值；也可以直接把 Flourish 的导出 CSV 拖进来
+
+**不会写格式？** 顶栏「📄 模板下载」提供三份可直接套用的模板
+（`src/core/templates.js`，测试里有"模板 → 解析 → 建模"闭环用例，格式永远不会失效）：
+
+| 模板 | 结构 | 适用 |
+|---|---|---|
+| 长表模板 · 城市人口 | `date,name,category,value` | 一行一条观测，最通用 |
+| 宽表模板 · 省份年度数据 | `名称,2018,2019,…` | Flourish 风格，一行一个参赛者 |
+| 带图标模板 · icon 列 | 长表 + `icon` 列 | 想自定义柱头徽标 |
+
+模板带 BOM 头，Excel / WPS 双击打开中文不乱码。
 
 ## 导出工作流（短视频）
 
@@ -142,7 +182,8 @@ src/
     csv.js          RFC4180 解析 + 长宽表识别 + 类型推断
     format.js       千分位 / SI / 中文单位 / UTC 日期
     math.js         lerp、ticks、缓动
-    color.js        6 套色板 + 感知亮度对比色
+    color.js        6 套色板 + 感知亮度对比色 + 明暗调整（3D 用）
+    icons.js        柱头徽标：emoji 映射 / 首字圆牌 / 字体探测
     zip.js          零依赖 ZIP（store）打包器
   render/
     renderer.js     Canvas 渲染器：三种标签布局、裁剪、淡出

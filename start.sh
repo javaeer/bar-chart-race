@@ -14,8 +14,8 @@ fi
 
 # 后台打开浏览器（失败不阻断服务器）
 ( sleep 1
-  open "http://localhost:5174" 2>/dev/null \
-    || xdg-open "http://localhost:5174" 2>/dev/null \
+  open "http://localhost:5173" 2>/dev/null \
+    || xdg-open "http://localhost:5173" 2>/dev/null \
     || true ) &
 
 node scripts/serve.js

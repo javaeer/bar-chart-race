@@ -13,5 +13,5 @@ if errorlevel 1 (
   exit /b 1
 )
 
-start "" "http://localhost:5174"
+start "" "http://localhost:5173"
 node scripts\serve.js

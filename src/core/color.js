@@ -35,6 +35,22 @@ export const PALETTES = {
     "#8c1c13", "#bf4342", "#d97a2b", "#e6a532", "#f2cc6b",
     "#fff0c9", "#f4b860", "#e0813a", "#c25020", "#94280e",
   ],
+  // —— 科技风：冷调霓虹（Material A400 系），深底上发光感最好 ——
+  tech: [
+    "#00e5ff", "#2979ff", "#7c4dff", "#e040fb", "#ff4081",
+    "#00e676", "#ffea00", "#ff6e40", "#18ffff", "#651fff",
+    "#00b0ff", "#f50057",
+  ],
+  // —— 赛博霓虹：饱和度拉满，纯黑底 ——
+  neon: [
+    "#00fff9", "#ff00e6", "#7dff00", "#ff2e00", "#ffe600",
+    "#00ff6a", "#b700ff", "#ff0090", "#00d4ff", "#ff6ec7",
+  ],
+  // —— 纯色：12 相均匀、S=92% L=58%，色相最"正"，区分度最高 ——
+  pure: [
+    "#f63131", "#f69431", "#f6f631", "#94f631", "#31f631", "#31f694",
+    "#31f6f6", "#3194f6", "#3131f6", "#9431f6", "#f631f6", "#f63194",
+  ],
 };
 
 /** Determinstic string → 稳定整数哈希（用于名字分色，避免依赖 Map 顺序） */
@@ -99,16 +115,36 @@ export class ColorScale {
   }
 }
 
-/** hex → rgba(...) */
-export function hexToRgba(hex, alpha = 1) {
+/** hex → [r,g,b] */
+export function hexToRgb(hex) {
   let h = String(hex).replace("#", "");
   if (h.length === 3) h = h.split("").map((c) => c + c).join("");
   const num = parseInt(h, 16);
-  if (!Number.isFinite(num)) return hex;
-  const r = (num >> 16) & 255;
-  const g = (num >> 8) & 255;
-  const b = num & 255;
+  if (!Number.isFinite(num)) return [128, 128, 128];
+  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+}
+
+/** [r,g,b] → hex */
+export function rgbToHex(r, g, b) {
+  const c = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0");
+  return `#${c(r)}${c(g)}${c(b)}`;
+}
+
+/** hex → rgba(...) */
+export function hexToRgba(hex, alpha = 1) {
+  const [r, g, b] = hexToRgb(hex);
   return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/**
+ * 明暗调整（3D 立体感用）：amount > 0 向白混合，< 0 向黑混合，取值 -1..1。
+ * 直接混白/黑比转 HSL 更快，且在饱和色上不会跑偏成另一种颜色。
+ */
+export function shade(hex, amount) {
+  const [r, g, b] = hexToRgb(hex);
+  const target = amount >= 0 ? 255 : 0;
+  const p = Math.abs(amount);
+  return rgbToHex(r + (target - r) * p, g + (target - g) * p, b + (target - b) * p);
 }
 
 /** 判断颜色的感知亮度，用于决定叠加文字用深色还是浅色 */

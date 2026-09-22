@@ -11,6 +11,8 @@
 import { readFileSync } from "node:fs";
 import { normalizeData } from "../src/core/csv.js";
 import { RaceModel } from "../src/core/keyframes.js";
+import { TEMPLATES, templateBlob } from "../src/core/templates.js";
+import { iconFor } from "../src/core/icons.js";
 
 let passed = 0;
 let failed = 0;
@@ -277,6 +279,39 @@ section("8. 边界与健壮性");
   const sb = asc.sample(37, 0.4, 8);
   ok(sa.bars.map((b) => b.name).join("|") === sb.bars.map((b) => b.name).join("|"),
     "同一份数据重复构建，采样结果逐项一致（可复现）");
+}
+
+// ==================================================================
+// 9. 模板与图标（下载的模板必须永远可用：生成 → 解析 → 建模 闭环验证）
+// ==================================================================
+{
+  console.log("\n9. 模板与图标");
+
+  for (const [id, t] of Object.entries(TEMPLATES)) {
+    ok(typeof t.text === "string" && t.text.length > 50 && t.text.includes(","),
+      `模板 ${id} 文本非空且为 CSV 形态`);
+    try {
+      const parsed = normalizeData(t.text);
+      const m = new RaceModel(parsed.records, { k: 4 });
+      ok(m.frameCount >= 3 && m.names.length >= 4,
+        `模板 ${id} 闭环：解析出 ${m.names.length} 个名字 / ${m.frameCount} 帧`);
+      const s = m.sample(Math.floor(m.frameCount / 2), 0.5, 10);
+      ok(s.bars.length > 0 && Number.isFinite(s.xMax), `模板 ${id} 中点采样有效`);
+    } catch (e) {
+      ok(false, `模板 ${id} 闭环失败：${e.message}`);
+    }
+  }
+
+  ok(templateBlob(TEMPLATES.long.text) instanceof Blob && templateBlob(TEMPLATES.long.text).size > TEMPLATES.long.text.length,
+    "templateBlob 带 BOM（Excel 中文不乱码）");
+
+  ok(iconFor("可口可乐", "饮料").kind === "emoji" && iconFor("可口可乐", "饮料").value === "🥤",
+    "iconFor：分类映射命中");
+  ok(iconFor("东京", "日本").value === "🇯🇵", "iconFor：国家映射命中");
+  ok(iconFor("上海", "中国").value === "🇨🇳", "iconFor：中国映射正确");
+  ok(iconFor("华为", "", "🚀").value === "🚀", "iconFor：icon/image 列直填优先");
+  ok(iconFor("SomeBrand", "未知分类").kind === "text", "iconFor：未命中降级为首字圆牌");
+  ok(iconFor("x", "y", "https://example.com/a.png").kind === "url", "iconFor：URL 识别为图片");
 }
 
 // ==================================================================

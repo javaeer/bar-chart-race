@@ -9,12 +9,14 @@
  */
 
 import { normalizeData } from "./core/csv.js";
+import { TEMPLATES, templateBlob } from "./core/templates.js";
 import { RaceModel } from "./core/keyframes.js";
 import { RaceRenderer } from "./render/renderer.js";
 import { PALETTES, ColorScale } from "./core/color.js";
 import { Player } from "./player.js";
 import { recordVideo, exportFrameSequence, snapshotPNG, download, pickMimeType } from "./exporter.js";
 import { utcFormat, siFormat, cnNumber } from "./core/format.js";
+import { clamp } from "./core/math.js";
 
 // ─────────────────────────────────────────────── 数据集定义
 
@@ -56,6 +58,22 @@ const CANVAS_THEMES = {
     background: "#faf8f4", text: "#23201c", subtext: "#7a7268",
     axis: "#b3a99c", grid: "rgba(35,32,28,0.06)", ticker: "rgba(35,32,28,0.16)",
   },
+  // —— 科技深蓝：深空渐变 + 青色霓虹 + 点阵底纹 + 柱体发光 ——
+  tech: {
+    background: ["#03060f", "#071227", "#050c1c"],
+    text: "#eaf2ff", subtext: "#7f93b8",
+    axis: "#3f5f8f", grid: "rgba(0,229,255,0.10)", ticker: "rgba(0,229,255,0.42)",
+    accent: "#00e5ff", dot: "rgba(130,190,255,0.08)",
+    tickerSize: 2.0, glow: 0.55, mono: true,
+  },
+  // —— 赛博霓虹：纯黑底 + 洋红霓虹，发光最强 ——
+  cyber: {
+    background: ["#05010c", "#0d0320"],
+    text: "#ffffff", subtext: "#c4a7e7",
+    axis: "#7c4dff", grid: "rgba(124,77,255,0.16)", ticker: "rgba(255,0,230,0.48)",
+    accent: "#ff00e6", dot: "rgba(255,255,255,0.05)",
+    tickerSize: 2.1, glow: 0.75, mono: true,
+  },
 };
 
 // ─────────────────────────────────────────────── 应用状态
@@ -67,6 +85,8 @@ const state = {
   renderer: null,
   player: null,
   datasetId: "brands",
+  // URL 里显式指定的参数（n/k/frameDur）优先级高于数据集自带默认值
+  urlSet: new Set(),
   rawText: null,
   records: null,
   header: null,
@@ -79,13 +99,16 @@ const state = {
 const cfg = {
   n: 12, k: 10, frameDur: 250,
   labelLayout: "inline",
-  palette: "tableau10",
+  palette: "tech",
   colorMode: "category",
   valueFormat: "full",
   barRadius: 0.28,
+  depth3D: 0.45,
+  iconPosition: "front",
+  iconSize: 0.9,
   showValue: true, showAxis: true, showGrid: true, showTicker: true, fadeEdge: true,
   width: 1920, height: 1080, dpr: 1,
-  canvasTheme: "dark",
+  canvasTheme: "tech",
   sortDir: "desc",
   easing: "linear",
   title: "", subtitle: "", footer: "",
@@ -143,7 +166,11 @@ function readUrlOverrides() {
   const preset = q.get("preset");
   if (preset) { const [w, h] = preset.split("x").map(Number); if (w && h) { cfg.width = w; cfg.height = h; } }
   if (q.get("theme")) state.uiTheme = q.get("theme");
-  for (const key of ["n", "k", "frameDur"]) if (q.get(key)) cfg[key] = Number(q.get(key));
+  for (const key of ["n", "k", "frameDur"]) {
+    if (q.get(key)) { cfg[key] = Number(q.get(key)); state.urlSet.add(key); }
+  }
+  for (const key of ["depth3D", "iconSize"]) if (q.get(key) != null) cfg[key] = Number(q.get(key));
+  if (q.get("icon")) cfg.iconPosition = q.get("icon");
   if (q.get("label")) cfg.labelLayout = q.get("label");
   if (q.get("canvasTheme") && CANVAS_THEMES[q.get("canvasTheme")]) cfg.canvasTheme = q.get("canvasTheme");
   if (q.get("palette")) cfg.palette = q.get("palette");
@@ -198,7 +225,8 @@ function ingest(text, meta) {
     state.customMeta = meta;
 
     for (const [k2, v] of Object.entries(meta)) {
-      if (["n", "k", "frameDur"].includes(k2)) cfg[k2] = v;
+      // URL 显式传过的参数不被数据集默认值覆盖（自动化截图依赖这一点）
+      if (["n", "k", "frameDur"].includes(k2)) { if (!state.urlSet.has(k2)) cfg[k2] = v; }
       else if (["title", "subtitle", "footer"].includes(k2)) cfg[k2] = v;
     }
     state.dateFormatSpec = meta.dateFormat || "%Y";
@@ -206,10 +234,52 @@ function ingest(text, meta) {
     rebuildModel();
     syncControls();
     updateDurationHint();
+
+    // icon/image 列填的是图片 URL 时异步预加载；emoji 图标不需要这一步
+    preloadIconImages(state.records).then((map) => {
+      if (!map || !map.size) return;
+      applyRendererOptions();
+      if (state.player) state.player.render();
+    });
   } catch (err) {
-    toast("数据解析失败：" + err.message, "error");
+    recordPageError("ingest", String(err?.stack || err)); // 写进 DOM，无头环境也能读到
+    // 常见错误给出可操作的提示，而不是让用户对着"解析失败"猜
+    const hint =
+      /未解析到有效数据行|为空/.test(err.message)
+        ? "  请检查首行表头：长表需 date/name/value（或 日期/名称/数值），宽表首列为名称、其余列为时间。可点顶栏「模板下载」参考格式。"
+        : "";
+    toast("数据解析失败：" + err.message + hint, "error");
     console.error(err);
   }
+}
+
+/**
+ * 预加载 icon/image 列里的图片 URL。
+ * 只处理看起来像 URL 的值（emoji 图标直接画，不需要网络）。
+ * 加载失败的条目静默跳过，由渲染器降级成首字圆牌。
+ */
+function preloadIconImages(records) {
+  state.iconImages = null;
+  const urls = new Set();
+  for (const r of records) {
+    const s = String(r.image ?? "").trim();
+    if (/^https?:\/\/|^\.{0,2}\//.test(s)) urls.add(s);
+  }
+  if (!urls.size) return Promise.resolve(null);
+
+  const map = new Map();
+  return Promise.all(
+    [...urls].map(
+      (u) =>
+        new Promise((done) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => { map.set(u, img); done(); };
+          img.onerror = () => done();
+          img.src = u;
+        })
+    )
+  ).then(() => { state.iconImages = map; return map; });
 }
 
 /** 重建模型并重接播放器（切换数据集 / 改 k 时调用） */
@@ -257,13 +327,21 @@ function applyRendererOptions(extra = {}) {
     title: cfg.title,
     subtitle: cfg.subtitle,
     footer: cfg.footer,
+    // 字号随画布宽度缩放：竖屏 1080 宽下 44px 标题会占掉 1/4 宽度，比例失调
+    titleSize: clamp(Math.round(cfg.width * 0.023), 22, 46),
+    subtitleSize: clamp(Math.round(cfg.width * 0.0115), 13, 24),
+    footerSize: clamp(Math.round(cfg.width * 0.009), 12, 20),
     labelLayout: cfg.labelLayout,
+    depth3D: cfg.depth3D,
+    iconPosition: cfg.iconPosition,
+    iconSize: cfg.iconSize,
     showValue: cfg.showValue,
     showAxis: cfg.showAxis,
     showGrid: cfg.showGrid,
     showTicker: cfg.showTicker,
     fadeEdge: cfg.fadeEdge,
     barRadius: cfg.barRadius,
+    images: state.iconImages || null,
     theme: CANVAS_THEMES[cfg.canvasTheme],
     colorScale,
     valueFormat: valueFormatFor(),
@@ -343,10 +421,31 @@ function bindControls() {
     $("radiusVal").textContent = cfg.barRadius.toFixed(2);
     applyRendererOptions(); state.player?.render();
   });
+  on("depth3D", "input", (e) => {
+    cfg.depth3D = +e.target.value;
+    $("depthVal").textContent = cfg.depth3D.toFixed(2);
+    applyRendererOptions(); state.player?.render();
+  });
+  on("iconPosition", "change", (e) => { cfg.iconPosition = e.target.value; applyRendererOptions(); state.player?.render(); });
+  on("iconSize", "input", (e) => {
+    cfg.iconSize = +e.target.value;
+    $("iconSizeVal").textContent = cfg.iconSize.toFixed(2);
+    applyRendererOptions(); state.player?.render();
+  });
 
   for (const id of ["showValue", "showAxis", "showGrid", "showTicker", "fadeEdge"]) {
     on(id, "change", (e) => { cfg[id] = e.target.checked; applyRendererOptions(); state.player?.render(); });
   }
+
+  // —— 模板下载：照格式填数据，Excel/WPS 打开不乱码（带 BOM） ——
+  on("templateSel", "change", (e) => {
+    const id = e.target.value;
+    e.target.value = ""; // 复位占位项，允许连续下载同一份
+    const t = TEMPLATES[id];
+    if (!t) return;
+    download(templateBlob(t.text), t.file);
+    toast(`已下载「${t.label}」`, "success");
+  });
 
   // —— 画布 ——
   on("preset", "change", (e) => {
@@ -434,6 +533,9 @@ function syncControls() {
   $("colorMode").value = cfg.colorMode;
   $("valueFormat").value = cfg.valueFormat;
   $("barRadius").value = cfg.barRadius; $("radiusVal").textContent = Number(cfg.barRadius).toFixed(2);
+  $("depth3D").value = cfg.depth3D; $("depthVal").textContent = Number(cfg.depth3D).toFixed(2);
+  $("iconPosition").value = cfg.iconPosition;
+  $("iconSize").value = cfg.iconSize; $("iconSizeVal").textContent = Number(cfg.iconSize).toFixed(2);
   $("showValue").checked = cfg.showValue;
   $("showAxis").checked = cfg.showAxis;
   $("showGrid").checked = cfg.showGrid;
