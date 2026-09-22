@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bar Chart Race Studio · 动态排序条形竞赛</title>
+<link rel="stylesheet" href="./styles/main.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ───────────────────────── 顶栏 ───────────────────────── -->
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <rect x="2" y="4" width="14" height="3.4" rx="1.4" fill="currentColor"/>
+        <rect x="2" y="10" width="9" height="3.4" rx="1.4" fill="currentColor" opacity=".72"/>
+        <rect x="2" y="16" width="19" height="3.4" rx="1.4" fill="currentColor" opacity=".44"/>
+      </svg>
+      <span>Bar Chart Race <em>Studio</em></span>
+    </div>
+
+    <div class="topbar-actions">
+      <select id="dataset" class="select" title="选择内置数据集"></select>
+      <label class="btn btn-ghost" title="上传自己的 CSV">
+        上传数据
+        <input type="file" id="file" accept=".csv,.txt,.tsv" hidden>
+      </label>
+      <button id="themeToggle" class="btn btn-ghost" title="切换明暗主题">🌗</button>
+      <button id="panelToggle" class="btn btn-ghost only-mobile" title="参数面板">⚙</button>
+    </div>
+  </header>
+
+  <!-- ───────────────────────── 主体 ───────────────────────── -->
+  <main class="body">
+
+    <!-- 参数面板 -->
+    <aside class="panel" id="panel">
+      <div class="panel-scroll">
+
+        <section class="group">
+          <h3>文案</h3>
+          <label class="field">
+            <span>标题</span>
+            <input type="text" id="title" value="全球最具价值品牌" placeholder="留空则隐藏">
+          </label>
+          <label class="field">
+            <span>副标题</span>
+            <input type="text" id="subtitle" value="按品牌价值排名 · 单位：百万美元" placeholder="留空则隐藏">
+          </label>
+          <label class="field">
+            <span>脚注</span>
+            <input type="text" id="footer" value="数据来源：Interbrand" placeholder="留空则隐藏">
+          </label>
+        </section>
+
+        <section class="group">
+          <h3>竞赛参数</h3>
+          <label class="field range">
+            <span>显示条目 <b id="nVal">12</b></span>
+            <input type="range" id="n" min="3" max="30" step="1" value="12">
+          </label>
+          <label class="field range">
+            <span>插值密度 <b id="kVal">10</b></span>
+            <input type="range" id="k" min="1" max="20" step="1" value="10">
+            <small>相邻两个观测点之间插入多少过渡帧，越大越顺滑</small>
+          </label>
+          <label class="field range">
+            <span>每帧时长 <b id="frameVal">250</b> ms</span>
+            <input type="range" id="frameDur" min="40" max="900" step="10" value="250">
+            <small>决定整段动画的播放速度</small>
+          </label>
+          <label class="field">
+            <span>排序方式</span>
+            <select id="sortDir" class="select">
+              <option value="desc">从大到小</option>
+              <option value="asc">从小到大</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>位置缓动</span>
+            <select id="easing" class="select">
+              <option value="linear">线性（同 D3 原版）</option>
+              <option value="smooth">平滑（有吸附感）</option>
+              <option value="smoother">更强平滑</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="group">
+          <h3>外观</h3>
+          <label class="field">
+            <span>画布底色</span>
+            <select id="canvasTheme" class="select">
+              <option value="dark">深色（视频推荐）</option>
+              <option value="light">浅色</option>
+              <option value="gradient">深色渐变</option>
+              <option value="paper">米白纸感</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>标签布局</span>
+            <select id="labelLayout" class="select">
+              <option value="inline">自适应（默认）</option>
+              <option value="left">名称固定在左侧</option>
+              <option value="trail">名称跟随条形末端</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>配色方案</span>
+            <select id="palette" class="select"></select>
+          </label>
+          <label class="field">
+            <span>上色依据</span>
+            <select id="colorMode" class="select">
+              <option value="category">按分类</option>
+              <option value="name">按名称</option>
+              <option value="rank">按名次</option>
+              <option value="solid">单一颜色</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>数值格式</span>
+            <select id="valueFormat" class="select">
+              <option value="full">千分位 123,456</option>
+              <option value="si">英文缩写 12.3M</option>
+              <option value="cn">中文单位 1.23亿</option>
+              <option value="raw">原始数值</option>
+            </select>
+          </label>
+          <label class="field range">
+            <span>条形圆角 <b id="radiusVal">0.28</b></span>
+            <input type="range" id="barRadius" min="0" max="0.5" step="0.02" value="0.28">
+          </label>
+          <div class="checks">
+            <label class="check"><input type="checkbox" id="showValue" checked><span>显示数值</span></label>
+            <label class="check"><input type="checkbox" id="showAxis" checked><span>显示坐标轴</span></label>
+            <label class="check"><input type="checkbox" id="showGrid" checked><span>显示网格线</span></label>
+            <label class="check"><input type="checkbox" id="showTicker" checked><span>显示日期角标</span></label>
+            <label class="check"><input type="checkbox" id="fadeEdge" checked><span>边缘淡出</span></label>
+          </div>
+        </section>
+
+        <section class="group">
+          <h3>画布</h3>
+          <label class="field">
+            <span>分辨率</span>
+            <select id="preset" class="select">
+              <option value="1280x720">1280 × 720（16:9 横版）</option>
+              <option value="1920x1080" selected>1920 × 1080（16:9 高清）</option>
+              <option value="2560x1440">2560 × 1440（2K）</option>
+              <option value="1080x1080">1080 × 1080（正方形）</option>
+              <option value="1080x1920">1080 × 1920（9:16 竖版）</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>渲染倍率 <b id="dprVal">1</b>×</span>
+            <input type="range" id="dpr" min="1" max="3" step="1" value="1">
+            <small>提高倍率可得到更锐利的导出画质</small>
+          </label>
+        </section>
+
+        <section class="group">
+          <h3>导出</h3>
+          <div class="grid2">
+            <label class="field">
+              <span>帧率</span>
+              <select id="fps" class="select">
+                <option value="24">24 fps</option>
+                <option value="30" selected>30 fps</option>
+                <option value="60">60 fps</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>码率 Mbps</span>
+              <select id="bitrate" class="select">
+                <option value="4000000">4</option>
+                <option value="8000000">8</option>
+                <option value="12000000" selected>12</option>
+                <option value="24000000">24</option>
+              </select>
+            </label>
+          </div>
+          <div class="export-row">
+            <button id="exportVideo" class="btn btn-primary">⏺ 录制视频</button>
+            <button id="exportFrames" class="btn">🗂 帧序列 ZIP</button>
+            <button id="exportPNG" class="btn">🖼 当前帧 PNG</button>
+          </div>
+          <div id="progressWrap" class="progress hidden">
+            <div id="progressBar" class="progress-bar"></div>
+            <span id="progressText">准备中…</span>
+          </div>
+          <p class="hint">
+            导出时长 = 关键帧数 × 每帧时长，当前约 <b id="durHint">—</b>。<br>
+            需要 MP4 / GIF 可用配套的 <code>npm run postprocess</code> 转码。
+          </p>
+        </section>
+
+      </div>
+    </aside>
+
+    <!-- 舞台 -->
+    <section class="stage" id="stage">
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="chart"></canvas>
+        <div id="dropHint" class="drop-hint">松手即可载入 CSV 数据</div>
+      </div>
+
+      <!-- 播放控制条 -->
+      <div class="controls">
+        <button id="playBtn" class="ctrl-btn play" title="播放 / 暂停 (空格)">
+          <svg class="i-play" viewBox="0 0 24 24" width="20" height="20"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+          <svg class="i-pause" viewBox="0 0 24 24" width="20" height="20"><path d="M6 5h4v14H6zm8 0h4v14h-4z" fill="currentColor"/></svg>
+        </button>
+        <button id="prevBtn" class="ctrl-btn" title="上一帧 (←)">⏮</button>
+        <button id="nextBtn" class="ctrl-btn" title="下一帧 (→)">⏭</button>
+        <button id="loopBtn" class="ctrl-btn active" title="循环播放">⟲</button>
+
+        <div class="timeline" id="timeline">
+          <div class="timeline-track"><div class="timeline-fill" id="tlFill"></div></div>
+        </div>
+
+        <span class="time" id="curTime">2000</span>
+        <select id="speed" class="select speed" title="播放速度">
+          <option value="0.25">0.25×</option>
+          <option value="0.5">0.5×</option>
+          <option value="1" selected>1×</option>
+          <option value="2">2×</option>
+          <option value="4">4×</option>
+        </select>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="toast" class="toast"></div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "bar-chart-race",
+  "version": "1.0.0",
+  "description": "Flourish 风格的动态排序条形竞赛图 —— 零依赖 Canvas 实现，支持视频导出",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node scripts/serve.js",
+    "test": "node test/model.test.js",
+    "verify": "node scripts/verify.js",
+    "postprocess": "node scripts/postprocess.js",
+    "build:standalone": "node scripts/build-standalone.js"
+  },
+  "license": "MIT"
+}
