@@ -1,0 +1,49 @@
+name: Release
+
+# 仅在打 tag（v*）时触发：构建单文件 Demo，并附为 GitHub Release Asset。
+# 不渲染视频（race 的示例视频由 preview/ 目录提供；Release 直接附可下载的单文件版，
+# 双击即可在本地 file:// 下运行），保持 tag 发布轻量、确定、可复现。
+# 不引入 semantic-release / release-please，保留手写 CHANGELOG.md 的可读性。
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v20
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: 单元测试
+        run: npm test
+      - name: 构建单文件 Demo
+        run: npm run build:standalone
+      - name: 提取 Release Notes（来自 CHANGELOG.md）
+        # 匹配 `## [1.0.0]` / `## 1.0.0` / `## v1.0.0`，截取到下一个 `## ` 段落为止。
+        run: |
+          node -e "
+          const fs=require('fs');
+          const md=fs.readFileSync('CHANGELOG.md','utf8');
+          const tag=process.env.GITHUB_REF_NAME.replace(/^v/,'');
+          const re=new RegExp('^## \\\\[?'+tag.replace(/[.]/g,'\\\\.')+'\\\\]?','m');
+          const m=md.match(re);
+          if(!m){ fs.writeFileSync('RELEASE_NOTES.md','See CHANGELOG.md for details.'); process.exit(0); }
+          const start=m.index;
+          const next=md.indexOf('\n## ', start+2);
+          const end=next===-1?md.length:next;
+          fs.writeFileSync('RELEASE_NOTES.md', md.slice(start,end).trim());
+          "
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          body_path: RELEASE_NOTES.md
+          fail_on_unmatched_files: false
+          files: dist/bar-chart-race-standalone.html

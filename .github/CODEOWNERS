@@ -1,0 +1,22 @@
+# 默认审查人：仓库所有者
+* @javaeer
+
+# 核心引擎与渲染（改动风险最高）
+/src/core/        @javaeer
+/src/render/      @javaeer
+/src/player.js    @javaeer
+/src/exporter.js  @javaeer
+
+# 构建、验证与发布脚本（影响 CI 与产物）
+/scripts/         @javaeer
+
+# 数据集（涉及来源与授权）
+/data/            @javaeer
+
+# 文档与治理
+/docs/            @javaeer
+GOVERNANCE.md     @javaeer
+CHANGELOG.md      @javaeer
+
+# 工作流（影响安全与部署）
+/.github/workflows/ @javaeer

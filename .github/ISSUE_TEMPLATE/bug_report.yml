@@ -1,0 +1,69 @@
+name: "🐛 缺陷报告 (Bug Report)"
+description: 报告渲染、导出或 CSV 解析方面的问题
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！请尽量提供可复现的信息。涉及数据问题时，附上 CSV 片段最有帮助。
+  - type: input
+    id: os
+    attributes:
+      label: 操作系统
+      placeholder: "Windows 11 / macOS 14 / Ubuntu 24.04"
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js 版本
+      description: 运行 `node -v`（仅开发模式 / CLI 需要）
+      placeholder: "v20.11.0"
+    validations:
+      required: false
+  - type: dropdown
+    id: mode
+    attributes:
+      label: 运行方式
+      options:
+        - "单文件版（dist/bar-chart-race-standalone.html）"
+        - "开发模式（npm start）"
+        - "CLI / 脚本（build-standalone / verify / postprocess）"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      description: 一步步描述如何触发问题
+      placeholder: |
+        1. 打开 …
+        2. 上传 CSV …
+        3. 点击 …
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: 数据（如相关）
+      description: 贴上出问题的 CSV 表头与几行（长表 / 宽表均可）；请删除敏感内容
+      render: csv
+      placeholder: |
+        name,category,date,value
+        A,X,2020,100
+    validations:
+      required: false
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 含报错信息 / 截图 / 录屏链接
+    validations:
+      required: true

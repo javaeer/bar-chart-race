@@ -1,0 +1,23 @@
+# ── 依赖（零依赖项目，正常为空；保留以防未来引入）──
+node_modules/
+
+# ── 构建产物（由 CI / build:standalone 现构建，不入库）──
+dist/
+
+# ── 验证与导出临时产物（verify.js 写入 preview/）──
+preview/
+out/
+frames/
+
+# ── 媒体 ──
+*.mp4
+*.webm
+*.gif
+
+# ── 日志 ──
+*.log
+
+# ── 编辑器 / 系统 ──
+.DS_Store
+.idea/
+.vscode/

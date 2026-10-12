@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "📖 使用文档"
+    url: "https://github.com/javaeer/bar-chart-race#readme"
+    about: 先看 README 与 docs/ 是否能解答你的问题
+  - name: "🔒 安全漏洞"
+    url: "https://github.com/javaeer/bar-chart-race/security/advisories/new"
+    about: 安全问题请走私有 Advisory 通道，不要公开提 Issue

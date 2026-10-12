@@ -1,0 +1,49 @@
+name: CI
+
+# 快速通道（unit）跑纯逻辑单元测试；重通道（qa）用无头浏览器做端到端渲染验证。
+# 注意：本项目零依赖，npm ci 安装 0 个包；qa 需要 chromium + ffmpeg + 中文字体。
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+# 最小权限原则：CI 仅读取代码，不写任何作用域
+permissions:
+  contents: read
+
+jobs:
+  # 快速通道：零依赖纯逻辑单元测试（不需要浏览器）
+  unit:
+    name: 单元测试
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v20
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: 纯逻辑单元测试（41 项引擎正确性）
+        run: npm test
+
+  # 重通道：无头浏览器端到端渲染验证
+  # 关键：verify.js 的浏览器可执行文件只认 --chrome 命令行参数（不读环境变量），
+  # 而 Ubuntu 上包名为 chromium-browser，故必须显式传 --chrome=chromium-browser。
+  qa:
+    name: 无头渲染验证
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v20
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: 安装 chromium / 中文字体 / ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser fonts-noto-cjk ffmpeg
+      - name: 端到端渲染验证（40 帧 → PNG → 视频合成）
+        run: npm run verify -- --chrome=chromium-browser

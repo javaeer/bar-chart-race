@@ -1,0 +1,19 @@
+# 二进制资产：避免 Git 做文本 diff 与行尾转换
+*.mp4 binary
+*.webm binary
+*.gif binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.svg text
+
+# 跨平台统一行尾（检出 LF，提交时归一）
+* text=auto eol=lf
+
+# 明确标记为文本，确保 LF 规范化
+*.js text
+*.css text
+*.html text
+*.json text
+*.csv text
+*.md text

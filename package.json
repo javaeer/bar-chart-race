@@ -11,5 +11,23 @@
     "postprocess": "node scripts/postprocess.js",
     "build:standalone": "node scripts/build-standalone.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/javaeer/bar-chart-race.git"
+  },
+  "homepage": "https://javaeer.github.io/bar-chart-race/",
+  "bugs": {
+    "url": "https://github.com/javaeer/bar-chart-race/issues"
+  },
+  "keywords": [
+    "bar-chart-race",
+    "data-visualization",
+    "canvas",
+    "animation",
+    "d3",
+    "video-export",
+    "零依赖"
+  ],
+  "author": "javaeer",
   "license": "MIT"
 }

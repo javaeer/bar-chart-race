@@ -1,0 +1,51 @@
+name: Deploy Demo to GitHub Pages
+
+# 将 dist/（单文件 Demo）发布到 GitHub Pages，作为在线可分享的 Demo。
+# 启用方式：仓库 Settings → Pages → Build and deployment → Source 选 "GitHub Actions"。
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+# 最小权限：仅 Pages 发布所需权限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 避免并发部署互相覆盖
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v20
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: 构建单文件 Demo
+        run: npm run build:standalone
+      - name: 暴露为 Pages 入口 index.html
+        # Pages 默认以根目录 index.html 为入口；单文件版名为 bar-chart-race-standalone.html，
+        # 复制一份为 index.html，使 https://<user>.github.io/bar-chart-race/ 直接打开 Demo。
+        run: cp dist/bar-chart-race-standalone.html dist/index.html
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

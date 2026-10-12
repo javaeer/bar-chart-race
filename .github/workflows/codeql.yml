@@ -1,0 +1,33 @@
+name: CodeQL
+
+# GitHub 原生代码扫描：分析 JavaScript/TypeScript 源码中的安全缺陷。
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (JavaScript)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@9f759ee644a3e7c15c1390abf49868036c00067b # v3
+        with:
+          languages: javascript-typescript
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@9f759ee644a3e7c15c1390abf49868036c00067b # v3
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@9f759ee644a3e7c15c1390abf49868036c00067b # v3
+        with:
+          category: "/language:javascript-typescript"

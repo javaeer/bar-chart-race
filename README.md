@@ -1,11 +1,21 @@
 # Bar Chart Race Studio
 
+[![CI](https://github.com/javaeer/bar-chart-race/actions/workflows/ci.yml/badge.svg)](https://github.com/javaeer/bar-chart-race/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/javaeer/bar-chart-race/actions/workflows/codeql.yml/badge.svg)](https://github.com/javaeer/bar-chart-race/actions/workflows/codeql.yml)
+[![Deploy Demo](https://github.com/javaeer/bar-chart-race/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/javaeer/bar-chart-race/actions/workflows/deploy-pages.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Flourish「Bar Chart Race」的**零依赖开源复刻**：算法源自 Observable 上 Mike Bostock 的
 [@d3/bar-chart-race](https://observablehq.com/@d3/bar-chart-race-explained)（ISC License），
 在其数学基础上做了三项工程化升级 —— **连续时间采样、名次与条目数解耦、候选集剪枝**。
 
 纯 Canvas 2D 渲染，无任何运行时依赖，浏览器直接跑；专为**短视频制作**增加了
 视频录制、PNG 帧序列导出、9:16 竖版等能力。
+
+## 🎬 在线 Demo
+
+直接打开 **[https://javaeer.github.io/bar-chart-race/](https://javaeer.github.io/bar-chart-race/)**
+即可体验零安装的单文件版本（由 GitHub Pages 持续部署）。
 
 ### 视觉
 
@@ -35,24 +45,24 @@ Flourish「Bar Chart Race」的**零依赖开源复刻**：算法源自 Observab
   CSV 的 `icon`/`image` 列（emoji 或图片 URL）→ 分类/国家映射 → 名称关键词 → 首字圆牌。
   系统缺 emoji 字体时自动降级成首字圆牌，不会出现"豆腐块"。
 
-![样片](preview/brands.mp4)
-
 ---
 
 ## 快速开始
 
 ```bash
 npm start            # 启动本地服务器 → http://localhost:5173
-npm test             # 核心引擎 41 项正确性测试
+npm test             # 核心引擎 57 项正确性测试
 npm run verify       # 无头浏览器端到端渲染验证 + 自动合成样片
 npm run postprocess -- 录制.webm -o 成片.mp4   # 转 MP4 / GIF
 ```
 
 > 源码版必须通过 HTTP 访问（ES modules 与 fetch 受同源策略约束），不能用 `file://` 直接打开。
+> 本项目零依赖，`npm install` 不安装任何包，所有脚本仅用 Node 内置模块。
 
 ### 下载后怎么跑
 
-**方式 A · 零安装（推荐）**：双击 `dist/bar-chart-race-standalone.html`。
+**方式 A · 零安装（推荐）**：双击 `dist/bar-chart-race-standalone.html`
+（或直接使用上方在线 Demo）。
 这是由打包脚本生成的单文件版，所有 JS/CSS/示例数据已内联，
 浏览器默认安全策略下即可运行，改数据用页面里的「上传 CSV」或直接拖文件进去。
 
@@ -136,7 +146,7 @@ f(frameIndex, u) → { date, xMax, bars[] }
 
 ### 7. 为什么是 Canvas 而不是 SVG
 
-| | SVG + d3-transition（原版） | Canvas 2D（本实现) |
+| | SVG + d3-transition（原版） | Canvas 2D（本实现） |
 |---|---|---|
 | 录制视频 | 需序列化→img→canvas，字体跨域常翻车 | `captureStream()` 直通 MediaRecorder |
 | seek / 变速 | 不支持（transition 队列） | 天然支持（纯函数采样） |
@@ -163,6 +173,8 @@ f(frameIndex, u) → { date, xMax, bars[] }
 | 带图标模板 · icon 列 | 长表 + `icon` 列 | 想自定义柱头徽标 |
 
 模板带 BOM 头，Excel / WPS 双击打开中文不乱码。
+
+> 数据格式完整规范、列名别名表与授权说明见 **[`docs/data-format.md`](docs/data-format.md)**。
 
 ## 导出工作流（短视频）
 
@@ -198,8 +210,8 @@ scripts/
   ffmpeg-util.js      编码器探测与回退（libx264 → libopenh264 → …）
 start.bat / start.command / start.sh
                       免命令行启动（自动开浏览器）
-dist/                 构建产物（单文件版）
-test/model.test.js    41 项正确性测试
+dist/                 构建产物（单文件版，gitignore）
+test/model.test.js    57 项正确性测试
 ```
 
 ## 测试覆盖了什么
@@ -209,6 +221,14 @@ test/model.test.js    41 项正确性测试
 - **剪枝等价**：剪枝版与全量排序版结果零差异（品牌集 672 抽样 + 4000 参赛者合成集）
 - **可复现**：同数据重复构建，采样结果逐项一致（录像确定性的前提）
 - **健壮**：越界索引、u>1、n 超过总数、单观测点、升序模式
+
+## 文档索引
+
+- [架构与三大升级](docs/architecture.md)
+- [数据格式规范](docs/data-format.md)
+- [CLI / 脚本参考](docs/cli-reference.md)
+- [常见问题](docs/faq.md)
+- [贡献指南](CONTRIBUTING.md) · [安全政策](SECURITY.md) · [治理](GOVERNANCE.md) · [路线图](ROADMAP.md)
 
 ## 致谢
 

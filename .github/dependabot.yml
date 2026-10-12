@@ -1,0 +1,14 @@
+# 依赖更新配置
+# 说明：本项目零运行时依赖（纯 Node 内置模块），npm 生态无可升级项；
+# 故仅启用 github-actions 生态，保持工作流 action 引用随上游安全更新。
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # action 已钉版到 SHA，dependabot 仅在有安全修复时提出 PR
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "github-actions"
